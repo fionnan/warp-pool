@@ -14,9 +14,8 @@ import Control.Monad.IO.Class
 main = do
     let port = 3000
     putStrLn $ "Listening on port " ++ show port
-    createPool (HP.connectPostgreSQL "dbname=haskell_api") H.disconnect 5 $ \pool -> run port .app
-
---5 $ run port . app
+    pool <- createPool (HP.connectPostgreSQL "dbname=haskell_api") H.disconnect 5 0.5 1 
+    let withResource pool $ \pool -> run port (app pool)
 
 app::Pool HP.Connection -> Application
 app pool req = do
