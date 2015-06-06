@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Network.HTTP.Types (status200)
@@ -14,8 +15,8 @@ import Control.Monad.IO.Class
 main = do
     let port = 3000
     putStrLn $ "Listening on port " ++ show port
-    pool <- createPool (HP.connectPostgreSQL "dbname=haskell_api") H.disconnect 5 0.5 1 
-    let withResource pool $ \pool -> run port (app pool)
+    pool <- createPool (HP.connectPostgreSQL "dbname=haskell_api") H.disconnect 5 5 5
+    run port (app pool)
 
 app::Pool HP.Connection -> Application
 app pool req = do
@@ -25,8 +26,8 @@ app pool req = do
         x -> return $ index x
 
 reports conn = do
-  reports <- H.quickQuery' conn "SELECT * from things" []
-  return $ responseBuilder status200 [ ("Content-Type", "text/plain") ] $ mconcat $ map copyByteString
+    reports <- H.quickQuery' conn "SELECT * from things" []
+    return $ responseBuilder status200 [ ("Content-Type", "text/plain") ] $ mconcat $ map copyByteString
     [ "yay" ]
 
 index x = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
