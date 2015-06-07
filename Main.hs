@@ -19,11 +19,11 @@ main = do
     run port (app pool)
 
 app::Pool HP.Connection -> Application
-app pool req = do
-    case pathInfo req of
+app pool req f =
+    f $ case pathInfo req of
         ["reports"] ->
-          liftIO $ withResource pool reports
-        x -> return $ index x
+            withResource pool reports
+        x -> index x
 
 reports conn = do
     reports <- H.quickQuery' conn "SELECT * from things" []
