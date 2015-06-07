@@ -1,35 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Blaze.ByteString.Builder (copyByteString)
+import Control.Monad.IO.Class
+import Data.ByteString.Char8
+import Data.ByteString.Lazy.Char8
+import qualified Data.ByteString.UTF8 as BU
+import Data.Enumerator (Iteratee)
+import Data.Monoid
+import Data.Pool
+import qualified Database.HDBC
+import qualified Database.HDBC.PostgreSQL
+import Network.HTTP.Types (status200)
+import Network.HTTP.Types.Header (hContentType)
 import Network.Wai
 import Network.Wai.Handler.Warp
-import Network.HTTP.Types (status200)
-import Blaze.ByteString.Builder (copyByteString)
-import qualified Data.ByteString.UTF8 as BU
-import Data.Monoid
-import Data.Enumerator (Iteratee)
-import Data.Pool
-import qualified Database.HDBC as H
-import qualified Database.HDBC.PostgreSQL as HP
-import Control.Monad.IO.Class
 
 main = do
-    let port = 3000
-    putStrLn $ "Listening on port " ++ show port
-    pool <- createPool (HP.connectPostgreSQL "dbname=haskell_api") H.disconnect 5 5 5
-    run port (app pool)
-
-app::Pool HP.Connection -> Application
-app pool req f =
-    f $ case pathInfo req of
-        ["reports"] ->
-            withResource pool reports
-        x -> index x
-
-reports conn = do
-    reports <- H.quickQuery' conn "SELECT * from things" []
-    return $ responseBuilder status200 [ ("Content-Type", "text/plain") ] $ mconcat $ map copyByteString
-    [ "yay" ]
-
-index x = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-    [ "<p>Hello from ", BU.fromString $ show x, "!</p>"
-    , "<p><a href='/yay'>yay</a></p>\n" ]
+    conn <- Database.HDBC.PostgreSQL.connectPostgreSQL "dbname=testdb user=lambda password=l@mbda"
+    Network.Wai.Handler.Warp.run 300 (\req f -> do
+        theAnswerSqlValue <- Database.HDBC.quickQuery' conn "SELECT * FROM \"Test\"" []
+        let theAnswer = Database.HDBC.fromSql $ Prelude.head $ Prelude.head theAnswerSqlValue :: String
+        f $ responseLBS status200 [(hContentType, Data.ByteString.Char8.pack "text/plain")] (Data.ByteString.Lazy.Char8.pack theAnswer))
